@@ -21,6 +21,7 @@ struct State {
     commands: Vec<Command>,
     position: u32,
     depth: u32,
+    aim: u32,
 }
 
 impl State {
@@ -31,6 +32,7 @@ impl State {
             commands,
             position: 0,
             depth: 0,
+            aim: 0,
         }
     }
 
@@ -58,12 +60,29 @@ impl State {
         }
     }
 
-    fn process_commands(&mut self) {
+    fn process_commands_part1(&mut self) {
         for command in self.commands.iter() {
             match command {
                 Command::Forward(units) => self.position += units,
                 Command::Down(units) => self.depth += units,
                 Command::Up(units) => self.depth -= units,
+            }
+        }
+    }
+
+    fn process_commands_part2(&mut self) {
+        // Reinitialize position and depth
+        self.position = 0;
+        self.depth = 0;
+
+        for command in self.commands.iter() {
+            match command {
+                Command::Forward(units) => {
+                    self.position += units;
+                    self.depth += self.aim * units;
+                }
+                Command::Down(units) => self.aim += units,
+                Command::Up(units) => self.aim -= units,
             }
         }
     }
@@ -79,10 +98,21 @@ fn main() {
         state.parse_line(&line);
     }
 
-    state.process_commands();
+    // Part 1
+
+    state.process_commands_part1();
 
     println!(
         "Part 1: the product of the final position and final depth is {}",
+        state.position * state.depth
+    );
+
+    // Part 2
+
+    state.process_commands_part2();
+
+    println!(
+        "Part 2: the product of the final position and final depth is {}",
         state.position * state.depth
     );
 }
