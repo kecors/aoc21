@@ -1,0 +1,10 @@
+digit = { '0' .. '9' }
+value = { digit+ }
+
+forward = { "forward " ~ value }
+down = { "down " ~ value }
+up = { "up " ~ value }
+
+command = _{ forward | down | up }
+
+main = _{ SOI ~ command+ ~ EOI }
