@@ -1,0 +1,13 @@
+digit = { '0' .. '9' }
+value = { digit+ }
+
+draw = { value }
+draws = _{ draw ~ ("," ~ draw)* }
+
+new_board = { NEWLINE }
+target = { value }
+line = _{ NEWLINE ~ " "* ~ target ~ " "+ ~ target ~ " "+ ~ target ~ " "+ ~ target ~ " "+ ~ target }
+board = _{ new_board ~ line ~ line ~ line ~ line ~ line }
+boards = _{ board+ }
+
+main = _{ draws ~ boards }
