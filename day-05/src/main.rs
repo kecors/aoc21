@@ -25,7 +25,7 @@ struct Line {
 }
 
 impl Line {
-    fn points(&self) -> Vec<Point> {
+    fn points(&self, part_2_flag: bool) -> Vec<Point> {
         let mut points = Vec::new();
 
         // Horizontal lines
@@ -54,7 +54,46 @@ impl Line {
             }
         }
 
-        // Consider only horizontal and vertical lines for now
+        // Ignore diagonal lines for part 1
+        if !part_2_flag {
+            return points;
+        }
+
+        // Diagonal lines
+        if self.x1 > self.x2 && self.y1 != self.y2 {
+            if self.y1 > self.y2 {
+                for delta in 0..=(self.x1 - self.x2) {
+                    points.push(Point {
+                        x: self.x1 - delta,
+                        y: self.y1 - delta,
+                    });
+                }
+            } else {
+                for delta in 0..=(self.x1 - self.x2) {
+                    points.push(Point {
+                        x: self.x1 - delta,
+                        y: self.y1 + delta,
+                    });
+                }
+            }
+        }
+        if self.x2 > self.x1 && self.y1 != self.y2 {
+            if self.y1 > self.y2 {
+                for delta in 0..=(self.x2 - self.x1) {
+                    points.push(Point {
+                        x: self.x1 + delta,
+                        y: self.y1 - delta,
+                    });
+                }
+            } else {
+                for delta in 0..=(self.x2 - self.x1) {
+                    points.push(Point {
+                        x: self.x1 + delta,
+                        y: self.y1 + delta,
+                    });
+                }
+            }
+        }
 
         points
     }
@@ -107,9 +146,9 @@ impl State {
         }
     }
 
-    fn consider_lines(&mut self) -> u32 {
+    fn consider_lines(&mut self, part_2_flag: bool) -> u32 {
         for line in self.lines.iter() {
-            for point in line.points() {
+            for point in line.points(part_2_flag) {
                 let coverage = self.coverages.entry(point).or_insert(0);
                 *coverage += 1;
             }
@@ -130,11 +169,23 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
+    // Part 1
+
     let mut state = State::new();
     for line in input.lines() {
         state.parse_line(line);
     }
 
-    let overlaps = state.consider_lines();
+    let overlaps = state.consider_lines(false);
     println!("Part 1: at {} points at least two lines overlap", overlaps);
+
+    // Part 2
+
+    let mut state = State::new();
+    for line in input.lines() {
+        state.parse_line(line);
+    }
+
+    let overlaps = state.consider_lines(true);
+    println!("Part 2: at {} points at least two lines overlap", overlaps);
 }
