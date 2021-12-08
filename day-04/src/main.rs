@@ -14,25 +14,36 @@ struct BingoParser;
 struct Board {
     targets: Vec<u32>,
     marks: Vec<bool>,
+    result: Option<(usize, u32, u32)>,
 }
 
 impl Board {
     fn new(targets: Vec<u32>) -> Board {
         let marks: Vec<bool> = iter::repeat(false).take(targets.len()).collect();
+        let result = None;
 
-        Board { targets, marks }
-    }
-
-    fn mark_draw(&mut self, draw: u32) {
-        for j in 0..self.targets.len() {
-            if self.targets[j] == draw {
-                self.marks[j] = true;
-                return;
-            }
+        Board {
+            targets,
+            marks,
+            result,
         }
     }
 
-    fn check_winner(&self) -> Option<u32> {
+    fn play_round(&mut self, draw_index: usize, draw: u32) {
+        // If this board already won, don't play it any more
+        if self.result != None {
+            return;
+        }
+
+        // Mark the draw, if found in targets for this board
+        for j in 0..self.targets.len() {
+            if self.targets[j] == draw {
+                self.marks[j] = true;
+                break;
+            }
+        }
+
+        // Check whether this board is now a winner
         let groupings = vec![
             [0, 1, 2, 3, 4],
             [5, 6, 7, 8, 9],
@@ -49,16 +60,14 @@ impl Board {
         for &grouping in groupings.iter() {
             if grouping.iter().all(|&x| self.marks[x]) {
                 let mut unmarked_sum = 0;
-                for j in 0..25 {
+                for j in 0..self.marks.len() {
                     if !self.marks[j] {
                         unmarked_sum += self.targets[j];
                     }
                 }
-                return Some(unmarked_sum);
+                self.result = Some((draw_index, draw, unmarked_sum));
             }
         }
-
-        None
     }
 }
 
@@ -107,17 +116,52 @@ impl State {
         self.boards.push(Board::new(targets));
     }
 
-    fn play(&mut self) -> (u32, u32) {
-        for &draw in self.draws.iter() {
+    fn play(&mut self) {
+        for (draw_index, &draw) in self.draws.iter().enumerate() {
             for board in self.boards.iter_mut() {
-                board.mark_draw(draw);
-                if let Some(unmarked_sum) = board.check_winner() {
-                    return (draw, unmarked_sum);
+                board.play_round(draw_index, draw);
+            }
+        }
+    }
+
+    fn part_1_first_winner(&self) -> (u32, u32) {
+        let mut winning_round = self.draws.len();
+        let mut winning_board_index = 0;
+
+        for (j, board) in self.boards.iter().enumerate() {
+            if let Some((round, _, _)) = board.result {
+                if round < winning_round {
+                    winning_round = round;
+                    winning_board_index = j;
                 }
             }
         }
 
-        panic!("No winner!");
+        if let Some((_, winning_draw, unmarked_sum)) = self.boards[winning_board_index].result {
+            return (winning_draw, unmarked_sum);
+        } else {
+            panic!("Problem with first winner!");
+        }
+    }
+
+    fn part_2_last_winner(&self) -> (u32, u32) {
+        let mut winning_round = 0;
+        let mut winning_board_index = 0;
+
+        for (j, board) in self.boards.iter().enumerate() {
+            if let Some((round, _, _)) = board.result {
+                if round > winning_round {
+                    winning_round = round;
+                    winning_board_index = j;
+                }
+            }
+        }
+
+        if let Some((_, winning_draw, unmarked_sum)) = self.boards[winning_board_index].result {
+            return (winning_draw, unmarked_sum);
+        } else {
+            panic!("Problem with last winner!");
+        }
     }
 }
 
@@ -128,9 +172,17 @@ fn main() {
     let mut state = State::new();
     state.parse_input(&input);
 
-    let (winning_draw, unmarked_sum) = state.play();
+    state.play();
+
+    let (winning_draw, unmarked_sum) = state.part_1_first_winner();
     println!(
-        "Part 1: the final score for the winning board is {}",
+        "Part 1: the final score for the first winning board is {}",
+        winning_draw * unmarked_sum
+    );
+
+    let (winning_draw, unmarked_sum) = state.part_2_last_winner();
+    println!(
+        "Part 2: the final score for the last winning board is {}",
         winning_draw * unmarked_sum
     );
 }
