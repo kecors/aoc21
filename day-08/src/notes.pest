@@ -1,0 +1,11 @@
+signal = { 'a' .. 'g' }
+
+pattern = { signal+ }
+
+input = { pattern }
+
+output = { pattern }
+
+line = _{ input ~ (" " ~ input)* ~ " | " ~ output ~ (" " ~ output)* }
+
+main = _{ line+ }
