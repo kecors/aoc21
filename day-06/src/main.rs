@@ -1,63 +1,58 @@
+use std::collections::HashMap;
 use std::io::{stdin, Read};
 
 #[derive(Debug)]
 struct State {
-    day: u32,
-    fishes: Vec<u32>,
+    day: u64,
+    fishes: HashMap<u64, u64>,
 }
 
 impl State {
     fn new(input: &str) -> State {
         let day = 0;
-        let fishes: Vec<u32> = input
+        let mut fishes = HashMap::new();
+        input
             .trim()
             .split(',')
-            .map(|x| x.parse::<u32>().unwrap())
-            .collect();
+            .map(|x| x.parse::<u64>().unwrap())
+            .for_each(|x| {
+                let f = fishes.entry(x).or_insert(0);
+                *f += 1;
+            });
 
         State { day, fishes }
     }
 
     fn day(&mut self) {
-        let mut updated_fishes = Vec::new();
-        let mut baby_count = 0;
+        let mut updated_fishes = HashMap::new();
 
-        for fish in self.fishes.iter() {
-            match fish {
+        for (&days, &quantity) in self.fishes.iter() {
+            match days {
                 0 => {
-                    updated_fishes.push(6);
-                    baby_count += 1;
+                    let uf = updated_fishes.entry(6).or_insert(0);
+                    *uf += quantity;
+                    let uf = updated_fishes.entry(8).or_insert(0);
+                    *uf += quantity;
                 }
                 _ => {
-                    updated_fishes.push(fish - 1);
+                    let uf = updated_fishes.entry(days - 1).or_insert(0);
+                    *uf += quantity;
                 }
             }
-        }
-
-        for _ in 0..baby_count {
-            updated_fishes.push(8);
         }
 
         self.day += 1;
         self.fishes = updated_fishes;
     }
 
-    #[allow(dead_code)]
-    fn display(&self) {
-        if self.day == 0 {
-            print!("Initial state: ");
-        } else {
-            print!("After {} days: ", self.day);
+    fn quantity(&self) -> u64 {
+        let mut total_quantity = 0;
+
+        for (_, &quantity) in self.fishes.iter() {
+            total_quantity += quantity;
         }
 
-        for (j, &fish) in self.fishes.iter().enumerate() {
-            if j == 0 {
-                print!("{}", fish);
-            } else {
-                print!(",{}", fish);
-            }
-        }
-        println!();
+        total_quantity
     }
 }
 
@@ -65,16 +60,29 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
+    // Part 1
+
     let mut state = State::new(&input);
-    //state.display();
 
     for _ in 0..80 {
         state.day();
-        //state.display();
     }
 
     println!(
         "Part 1: there would be {} lanternfish after 80 days",
-        state.fishes.len()
+        state.quantity()
+    );
+
+    // Part 2
+
+    let mut state = State::new(&input);
+
+    for _ in 0..256 {
+        state.day();
+    }
+
+    println!(
+        "Part 2: there would be {} lanternfish after 256 days",
+        state.quantity()
     );
 }
