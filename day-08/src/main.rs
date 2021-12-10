@@ -3,13 +3,14 @@ extern crate pest;
 extern crate pest_derive;
 
 use pest::Parser;
+use std::collections::HashSet;
 use std::io::{stdin, Read};
 
 #[derive(Parser)]
 #[grammar = "notes.pest"]
 struct NotesParser;
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 enum Signal {
     A,
     B,
@@ -20,44 +21,119 @@ enum Signal {
     G,
 }
 
-#[derive(Debug)]
-struct Pattern {
-    signals: Vec<Signal>,
-}
+fn parse_signal_pattern(text: &str) -> HashSet<Signal> {
+    use self::Signal::*;
 
-impl Pattern {
-    fn new(text: &str) -> Pattern {
-        let mut signals = Vec::new();
+    let mut signals = HashSet::new();
 
-        for ch in text.chars() {
-            match ch {
-                'a' => signals.push(Signal::A),
-                'b' => signals.push(Signal::B),
-                'c' => signals.push(Signal::C),
-                'd' => signals.push(Signal::D),
-                'e' => signals.push(Signal::E),
-                'f' => signals.push(Signal::F),
-                'g' => signals.push(Signal::G),
-                _ => (),
-            }
-        }
-
-        Pattern { signals }
+    for ch in text.chars() {
+        signals.insert(match ch {
+            'a' => A,
+            'b' => B,
+            'c' => C,
+            'd' => D,
+            'e' => E,
+            'f' => F,
+            'g' => G,
+            _ => panic!("Unknown signal {}", ch),
+        });
     }
+
+    signals
 }
 
 #[derive(Debug)]
 struct Display {
-    inputs: Vec<Pattern>,
-    outputs: Vec<Pattern>,
+    inputs: Vec<HashSet<Signal>>,
+    outputs: Vec<HashSet<Signal>>,
 }
 
 impl Display {
-    fn new() -> Display {
-        let inputs = Vec::new();
-        let outputs = Vec::new();
+    fn new(input: &str) -> Display {
+        let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
+
+        let pairs = NotesParser::parse(Rule::main, input).unwrap_or_else(|e| panic!("{}", e));
+
+        for pair in pairs {
+            let rule = pair.as_rule();
+            let text = pair.clone().as_span().as_str().to_string();
+
+            match rule {
+                Rule::input => {
+                    inputs.push(parse_signal_pattern(&text));
+                }
+                Rule::output => {
+                    outputs.push(parse_signal_pattern(&text));
+                }
+                _ => {
+                    panic!("Unknown rule {:?}", rule);
+                }
+            }
+        }
 
         Display { inputs, outputs }
+    }
+
+    fn deduce_digits(&self) -> Vec<&HashSet<Signal>> {
+        let one = self.inputs.iter().find(|x| x.len() == 2).unwrap();
+        let seven = self.inputs.iter().find(|x| x.len() == 3).unwrap();
+        let four = self.inputs.iter().find(|x| x.len() == 4).unwrap();
+        let eight = self.inputs.iter().find(|x| x.len() == 7).unwrap();
+
+        let three = self
+            .inputs
+            .iter()
+            .find(|x| x.len() == 5 && x.intersection(one).count() == 2)
+            .unwrap();
+        let six = self
+            .inputs
+            .iter()
+            .find(|x| x.len() == 6 && x.intersection(one).count() == 1)
+            .unwrap();
+        let five = self
+            .inputs
+            .iter()
+            .find(|x| x.len() == 5 && x.intersection(six).count() == 5)
+            .unwrap();
+        let nine = self
+            .inputs
+            .iter()
+            .find(|x| x.len() == 6 && x.difference(four).count() == 2)
+            .unwrap();
+        let zero = self
+            .inputs
+            .iter()
+            .find(|x| {
+                x.len() == 6
+                    && x.intersection(four).count() == 3
+                    && x.intersection(seven).count() == 3
+            })
+            .unwrap();
+        let two = self
+            .inputs
+            .iter()
+            .find(|x| x.len() == 5 && x.intersection(four).count() == 2)
+            .unwrap();
+
+        vec![zero, one, two, three, four, five, six, seven, eight, nine]
+    }
+
+    fn solve(&self) -> u32 {
+        let digit_hashsets = self.deduce_digits();
+
+        let mut sum = 0;
+
+        for (j, output) in self.outputs.iter().enumerate() {
+            for (k, digit_hashset) in digit_hashsets.iter().enumerate() {
+                if output.symmetric_difference(digit_hashset).count() == 0 {
+                    sum += k as u32 * (10_u32.pow(3 - (j as u32)));
+                    break;
+                }
+            }
+        }
+
+        sum
     }
 }
 
@@ -71,35 +147,10 @@ impl State {
         let mut displays = Vec::new();
 
         for line in input.lines() {
-            displays.push(State::parse_line(line));
+            displays.push(Display::new(line));
         }
 
         State { displays }
-    }
-
-    fn parse_line(input: &str) -> Display {
-        let pairs = NotesParser::parse(Rule::main, input).unwrap_or_else(|e| panic!("{}", e));
-
-        let mut display = Display::new();
-
-        for pair in pairs {
-            let rule = pair.as_rule();
-            let text = pair.clone().as_span().as_str().to_string();
-
-            match rule {
-                Rule::input => {
-                    display.inputs.push(Pattern::new(&text));
-                }
-                Rule::output => {
-                    display.outputs.push(Pattern::new(&text));
-                }
-                _ => {
-                    panic!("Unknown rule {:?}", rule);
-                }
-            }
-        }
-
-        display
     }
 }
 
@@ -113,8 +164,8 @@ fn main() {
 
     let mut count = 0;
     for display in state.displays.iter() {
-        for pattern in display.outputs.iter() {
-            match pattern.signals.len() {
+        for output in display.outputs.iter() {
+            match output.len() {
                 2 | 3 | 4 | 7 => count += 1,
                 _ => (),
             }
@@ -122,4 +173,13 @@ fn main() {
     }
 
     println!("Part 1: the digits 1, 4, 7, and 8 appear {} times", count);
+
+    // Part 2
+
+    let mut sum = 0;
+    for display in state.displays.iter() {
+        sum += display.solve();
+    }
+
+    println!("Part 2: the sum of the output values is {}", sum);
 }
