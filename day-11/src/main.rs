@@ -65,7 +65,7 @@ impl State {
         neighbors
     }
 
-    fn step(&mut self) {
+    fn step(&mut self) -> usize {
         for y in 0..self.octopuses.len() {
             for x in 0..self.octopuses[0].len() {
                 self.octopuses[y][x] += 1;
@@ -105,12 +105,16 @@ impl State {
             self.octopuses[y][x] = 0;
             self.flash_count += 1;
         }
+
+        flasheds.len()
     }
 }
 
 fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
+
+    // Part 1
 
     let mut state = State::new(&input);
 
@@ -122,4 +126,19 @@ fn main() {
         "Part 1: there are {} total flashes after 100 steps",
         state.flash_count
     );
+
+    // Part 2
+
+    let mut state = State::new(&input);
+
+    let mut step_count = 0;
+    loop {
+        step_count += 1;
+
+        if state.step() == 100 {
+            break;
+        }
+    }
+
+    println!("Part 2: all octopuses flash after step {}", step_count);
 }
