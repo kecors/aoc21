@@ -1,0 +1,15 @@
+digit = { '0' .. '9' }
+value = { digit+ }
+
+dot_x = { value }
+dot_y = { value }
+coordinate = _{ dot_x ~ "," ~ dot_y ~ NEWLINE }
+coordinates = _{ coordinate ~ (coordinate)* }
+
+fold_x = { value }
+fold_y = { value }
+fold_x_line = _{ "fold along x=" ~ fold_x ~ NEWLINE }
+fold_y_line = _{ "fold along y=" ~ fold_y ~ NEWLINE }
+fold_lines = _{ (fold_x_line | fold_y_line)+ }
+
+main = _{ coordinates ~ NEWLINE ~ fold_lines }
