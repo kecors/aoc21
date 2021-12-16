@@ -82,7 +82,7 @@ impl State {
     }
 
     #[allow(dead_code)]
-    fn display(&self) {
+    fn display_paper(&self) {
         for y in 0..self.max_y {
             for x in 0..self.max_x {
                 print!("{}", if self.paper[y][x] { "#" } else { "." });
@@ -91,27 +91,33 @@ impl State {
         }
     }
 
-    fn fold(&mut self) {
-        match self.folds[0] {
-            Fold::X(along_x) => {
-                for y in 0..self.max_y {
-                    for x in 1..(self.max_x - along_x) {
-                        if self.paper[y][along_x + x] {
-                            self.paper[y][along_x - x] = true;
+    fn fold_paper(&mut self, part_1_flag: bool) {
+        for fold in self.folds.iter() {
+            match *fold {
+                Fold::X(along_x) => {
+                    for y in 0..self.max_y {
+                        for x in 1..(self.max_x - along_x) {
+                            if self.paper[y][along_x + x] {
+                                self.paper[y][along_x - x] = true;
+                            }
                         }
                     }
+                    self.max_x = along_x;
                 }
-                self.max_x = along_x;
+                Fold::Y(along_y) => {
+                    for y in 1..(self.max_y - along_y) {
+                        for x in 0..self.max_x {
+                            if self.paper[along_y + y][x] {
+                                self.paper[along_y - y][x] = true;
+                            }
+                        }
+                    }
+                    self.max_y = along_y;
+                }
             }
-            Fold::Y(along_y) => {
-                for y in 1..(self.max_y - along_y) {
-                    for x in 0..self.max_x {
-                        if self.paper[along_y + y][x] {
-                            self.paper[along_y - y][x] = true;
-                        }
-                    }
-                }
-                self.max_y = along_y;
+
+            if part_1_flag {
+                break;
             }
         }
     }
@@ -139,10 +145,19 @@ fn main() {
 
     let mut state = State::new(&input);
 
-    state.fold();
+    state.fold_paper(true);
 
     println!(
         "Part 1: after one fold, {} dots are visible",
         state.count_dots()
     );
+
+    // Part 2
+
+    let mut state = State::new(&input);
+
+    state.fold_paper(false);
+
+    println!("Part 2: the activation code is:");
+    state.display_paper();
 }
