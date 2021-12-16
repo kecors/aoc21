@@ -1,0 +1,11 @@
+letter = { 'A' .. 'Z' }
+
+pt_element = { letter }
+polymer_template = _{ pt_element+ ~ NEWLINE }
+
+pir_e_1 = { letter }
+pir_e_2 = { letter }
+pir_e_3 = { letter }
+pair_insertion_rule = _{ pir_e_1 ~ pir_e_2 ~ " -> " ~ pir_e_3 ~ NEWLINE }
+
+main = _{ polymer_template ~ NEWLINE ~ pair_insertion_rule+ }
