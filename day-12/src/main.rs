@@ -52,15 +52,15 @@ impl State {
         State { connections }
     }
 
-    fn find_paths(&self) -> Vec<Vec<Cave>> {
+    fn find_paths(&self, revisitable: bool) -> Vec<Vec<Cave>> {
         let mut complete_paths: Vec<Vec<Cave>> = Vec::new();
-        let mut partial_paths: Vec<Vec<Cave>> = Vec::new();
+        let mut partial_paths: Vec<(Vec<Cave>, bool)> = Vec::new();
 
         for cave in self.connections[&Cave::Start].iter() {
-            partial_paths.push(vec![Cave::Start, cave.clone()]);
+            partial_paths.push((vec![Cave::Start, cave.clone()], revisitable));
         }
 
-        while let Some(mut partial_path) = partial_paths.pop() {
+        while let Some((mut partial_path, revisitable)) = partial_paths.pop() {
             if let Some(previous_cave) = partial_path.pop() {
                 for cave in self.connections[&previous_cave].iter() {
                     match cave {
@@ -69,16 +69,21 @@ impl State {
                             let mut new_partial_path = partial_path.clone();
                             new_partial_path.push(previous_cave.clone());
                             new_partial_path.push(cave.clone());
-                            partial_paths.push(new_partial_path);
+                            partial_paths.push((new_partial_path, revisitable));
                         }
                         Cave::Small(_) => {
+                            let mut new_revisitable = revisitable;
                             if partial_path.contains(cave) {
-                                continue;
+                                if new_revisitable {
+                                    new_revisitable = false;
+                                } else {
+                                    continue;
+                                }
                             }
                             let mut new_partial_path = partial_path.clone();
                             new_partial_path.push(previous_cave.clone());
                             new_partial_path.push(cave.clone());
-                            partial_paths.push(new_partial_path);
+                            partial_paths.push((new_partial_path, new_revisitable));
                         }
                         Cave::End => {
                             let mut complete_path = partial_path.clone();
@@ -101,10 +106,21 @@ fn main() {
 
     let state = State::new(input);
 
-    let complete_paths = state.find_paths();
+    // Part 1
+
+    let complete_paths = state.find_paths(false);
 
     println!(
         "Part 1: there are {} paths through the cave system",
+        complete_paths.len()
+    );
+
+    // Part 2
+
+    let complete_paths = state.find_paths(true);
+
+    println!(
+        "Part 2: there are {} paths through the cave system",
         complete_paths.len()
     );
 }
