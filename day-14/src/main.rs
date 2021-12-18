@@ -43,7 +43,7 @@ struct State {
     ruler: Ruler,
     leftmost_element: char,
     rightmost_element: char,
-    pair_counts: HashMap<Pair, u32>,
+    pair_counts: HashMap<Pair, u64>,
 }
 
 impl State {
@@ -96,7 +96,7 @@ impl State {
             .map(|(l, r)| Pair { left: l, right: r })
             .collect();
 
-        let mut pair_counts: HashMap<Pair, u32> = HashMap::new();
+        let mut pair_counts: HashMap<Pair, u64> = HashMap::new();
 
         for pair in pairs {
             let o = pair_counts.entry(pair).or_insert(0);
@@ -112,7 +112,7 @@ impl State {
     }
 
     fn step(&mut self) {
-        let mut new_pair_counts: HashMap<Pair, u32> = HashMap::new();
+        let mut new_pair_counts: HashMap<Pair, u64> = HashMap::new();
 
         for (pair, count) in self.pair_counts.iter() {
             let (new_pair_1, new_pair_2) = self.ruler.expand(pair);
@@ -125,7 +125,7 @@ impl State {
         self.pair_counts = new_pair_counts;
     }
 
-    fn element_counts(&self) -> HashMap<char, u32> {
+    fn element_counts(&self) -> HashMap<char, u64> {
         let mut element_counts = HashMap::new();
 
         element_counts.insert(self.leftmost_element, 1);
@@ -150,16 +150,29 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    let mut state = State::new(&input);
-
     // Part 1
+
+    let mut state = State::new(&input);
 
     for _ in 1..=10 {
         state.step();
     }
     let ec = state.element_counts();
-    let counts: Vec<u32> = ec.values().cloned().collect();
+    let counts: Vec<u64> = ec.values().cloned().collect();
     let &max = counts.iter().max().unwrap();
     let &min = counts.iter().min().unwrap();
     println!("Part 1: the difference of most and least is {}", max - min);
+
+    // Part 2
+
+    let mut state = State::new(&input);
+
+    for _ in 1..=40 {
+        state.step();
+    }
+    let ec = state.element_counts();
+    let counts: Vec<u64> = ec.values().cloned().collect();
+    let &max = counts.iter().max().unwrap();
+    let &min = counts.iter().min().unwrap();
+    println!("Part 2: the difference of most and least is {}", max - min);
 }
