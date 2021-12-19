@@ -1,9 +1,18 @@
 use std::io::{stdin, Read};
 
+#[allow(dead_code)]
+fn display_positions(positions: &[Vec<u32>]) {
+    for row in positions.iter() {
+        for position in row.iter() {
+            print!("{}", position);
+        }
+        println!();
+    }
+}
+
 #[derive(Debug)]
 struct State {
     positions: Vec<Vec<u32>>,
-    costs: Vec<Vec<Option<u32>>>,
 }
 
 impl State {
@@ -13,9 +22,44 @@ impl State {
             .map(|line| line.chars().map(|ch| ch.to_digit(10).unwrap()).collect())
             .collect();
 
-        let costs: Vec<Vec<Option<u32>>> = vec![vec![None; positions[0].len()]; positions.len()];
+        State { positions }
+    }
 
-        State { positions, costs }
+    fn expand_x25(&mut self) {
+        let mut new_positions = Vec::new();
+
+        // Expand vertically
+        for _ in 0..=4 {
+            new_positions.append(&mut self.positions.clone());
+        }
+
+        // Expand horizontally
+        let width = self.positions[0].len();
+        for y in 0..new_positions.len() {
+            for _ in 1..=4 {
+                new_positions[y].append(&mut self.positions[y % width].clone());
+            }
+        }
+
+        // Adjust risk levels
+        for area_y in 0..=4 {
+            for area_x in 0..=4 {
+                for tile_y in 0..self.positions.len() {
+                    for tile_x in 0..self.positions[0].len() {
+                        let y = area_y * self.positions.len() + tile_y;
+                        let x = area_x * self.positions[0].len() + tile_x;
+                        let mut value = new_positions[y][x] + area_y as u32 + area_x as u32;
+                        if value > 9 {
+                            value -= 9
+                        }
+                        new_positions[y][x] = value;
+                    }
+                }
+            }
+        }
+        //display_positions(&new_positions);
+
+        self.positions = new_positions;
     }
 
     fn neighbors(&self, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
@@ -37,33 +81,32 @@ impl State {
         neighbors
     }
 
-    fn search(&mut self) {
-        // This is a little inelegant, but since we never return to 0,0,
-        // we never need to add its risk value
-        self.costs[0][0] = Some(0);
+    fn calculate_lowest_total_risk(&mut self) -> u32 {
+        let mut costs: Vec<Vec<Option<u32>>> =
+            vec![vec![None; self.positions[0].len()]; self.positions.len()];
+        // No matter what the puzzle input specifies as the risk level
+        // of postion (0, 0), we will never revisit it, so we should
+        // treat its risk level as zero
+        costs[0][0] = Some(0);
 
-        let mut stack = vec![(0, 0)];
+        let mut stack = vec![(0, (0, 0))];
 
-        while let Some((x, y)) = stack.pop() {
-            if let Some(cost) = self.costs[y][x] {
-                for &(nx, ny) in self.neighbors((x, y)).iter() {
-                    if let Some(neighbor_cost) = self.costs[ny][nx] {
-                        if neighbor_cost <= cost + self.positions[ny][nx] {
-                            continue;
-                        }
+        while let Some((cost, (x, y))) = stack.pop() {
+            for &(nx, ny) in self.neighbors((x, y)).iter() {
+                let new_neighbor_cost = cost + self.positions[ny][nx];
+                if let Some(old_neighbor_cost) = costs[ny][nx] {
+                    if old_neighbor_cost <= new_neighbor_cost {
+                        continue;
                     }
-
-                    self.costs[ny][nx] = Some(cost + self.positions[ny][nx]);
-                    stack.push((nx, ny));
                 }
-            } else {
-                panic!("Cost for ({}, {}) should be known", x, y);
+
+                costs[ny][nx] = Some(new_neighbor_cost);
+                stack.push((new_neighbor_cost, (nx, ny)));
+                stack.sort_by(|a, b| b.0.cmp(&a.0)); // big optimization!
             }
         }
-    }
 
-    fn lowest_total_risk(&self) -> u32 {
-        if let Some(cost) = self.costs[self.costs[0].len() - 1][self.costs.len() - 1] {
+        if let Some(cost) = costs[costs[0].len() - 1][costs.len() - 1] {
             cost
         } else {
             panic!("Lowest total risk not determined");
@@ -79,10 +122,18 @@ fn main() {
 
     let mut state = State::new(&input);
 
-    state.search();
-
     println!(
         "Part 1: the lowest total cost of any path is {}",
-        state.lowest_total_risk()
+        state.calculate_lowest_total_risk()
+    );
+
+    // Part 2
+
+    let mut state = State::new(&input);
+    state.expand_x25();
+
+    println!(
+        "Part 2: the lowest total cost of any path is {}",
+        state.calculate_lowest_total_risk()
     );
 }
