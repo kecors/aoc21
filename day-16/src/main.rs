@@ -56,7 +56,7 @@ impl State {
         }
     }
 
-    fn process_packet(&mut self) {
+    fn process_packet(&mut self) -> u64 {
         let packet_version = bools_to_decimal(&self.data[self.cursor..self.cursor + 3]);
         self.cursor += 3;
         println!("packet version: {}", packet_version);
@@ -65,19 +65,60 @@ impl State {
         self.cursor += 3;
         println!("packet type id: {}", packet_type_id);
 
+        let mut packet_value: u64 = 0;
+
         match packet_type_id {
+            0 => {
+                let results = self.process_operator_packet();
+                packet_value += results.iter().sum::<u64>();
+            }
+            1 => {
+                let results = self.process_operator_packet();
+                packet_value += results.iter().product::<u64>();
+            }
+            2 => {
+                let results = self.process_operator_packet();
+                packet_value += results.iter().min().unwrap();
+            }
+            3 => {
+                let results = self.process_operator_packet();
+                packet_value += results.iter().max().unwrap();
+            }
             4 => {
-                self.process_literal_value_packet();
+                let result = self.process_literal_value_packet();
+                packet_value += result;
+            }
+            5 => {
+                let results = self.process_operator_packet();
+                if results[0] > results[1] {
+                    packet_value += 1;
+                }
+            }
+            6 => {
+                let results = self.process_operator_packet();
+                if results[0] < results[1] {
+                    packet_value += 1;
+                }
+            }
+            7 => {
+                let results = self.process_operator_packet();
+                if results[0] == results[1] {
+                    packet_value += 1;
+                }
             }
             _ => {
-                self.process_operator_packet();
+                panic!("Unknown packet type id {}", packet_type_id);
             }
         }
 
         self.packet_version_sum += packet_version;
+
+        println!("packet value: {}", packet_value);
+
+        packet_value
     }
 
-    fn process_literal_value_packet(&mut self) {
+    fn process_literal_value_packet(&mut self) -> u64 {
         let mut literal_value_bools = Vec::new();
 
         loop {
@@ -91,9 +132,13 @@ impl State {
         }
         let literal_value = bools_to_decimal(&literal_value_bools);
         println!("literal value: {}", &literal_value);
+
+        literal_value
     }
 
-    fn process_operator_packet(&mut self) {
+    fn process_operator_packet(&mut self) -> Vec<u64> {
+        let mut results = Vec::new();
+
         let length_type_id = self.data[self.cursor];
         self.cursor += 1;
 
@@ -106,7 +151,8 @@ impl State {
                 let end_of_packet_index = self.cursor + total_length_in_bits as usize;
 
                 while self.cursor < end_of_packet_index {
-                    self.process_packet();
+                    let result = self.process_packet();
+                    results.push(result);
                 }
             }
             true => {
@@ -114,10 +160,13 @@ impl State {
                 self.cursor += 11;
 
                 for _ in 0..subpacket_count {
-                    self.process_packet();
+                    let result = self.process_packet();
+                    results.push(result);
                 }
             }
         }
+
+        results
     }
 }
 
@@ -126,10 +175,12 @@ fn main() {
     stdin().read_to_string(&mut input).unwrap();
 
     let mut state = State::new(&input);
-    state.process_packet();
+    let result = state.process_packet();
 
     println!(
         "Part 1: the sum of all packet version numbers is {}",
         state.packet_version_sum
     );
+
+    println!("Part 2: the BITS transmission evaluates to {}", result);
 }
