@@ -1,0 +1,9 @@
+digit = { '0' .. '9' }
+sign = { "-" }
+
+x1 = { sign? ~ digit+ }
+x2 = { sign? ~ digit+ }
+y1 = { sign? ~ digit+ }
+y2 = { sign? ~ digit+ }
+
+main = _{ "target area: x=" ~ x1 ~ ".." ~ x2 ~ ", y=" ~ y1 ~ ".." ~ y2 }
