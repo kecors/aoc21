@@ -10,12 +10,21 @@ use std::io::{stdin, Read};
 #[grammar = "target.pest"]
 struct TargetParser;
 
+#[derive(Debug, Clone)]
+struct Solution {
+    velocity_x: i32,
+    velocity_y: i32,
+    steps: Vec<(i32, i32)>,
+    max_y_option: Option<i32>,
+}
+
 #[derive(Debug)]
 struct State {
     target_x_min: i32,
     target_x_max: i32,
     target_y_min: i32,
     target_y_max: i32,
+    solutions: Vec<Solution>,
 }
 
 impl State {
@@ -50,36 +59,37 @@ impl State {
             }
         }
 
+        let solutions = Vec::new();
+
         State {
             target_x_min,
             target_x_max,
             target_y_min,
             target_y_max,
+            solutions,
         }
     }
 
-    fn fire_probe(
-        &mut self,
-        mut velocity_x: i32,
-        mut velocity_y: i32,
-    ) -> (Vec<(i32, i32)>, Option<i32>) {
+    fn fire_probe(&mut self, velocity_x: i32, velocity_y: i32) {
+        let mut adjusted_velocity_x = velocity_x;
+        let mut adjusted_velocity_y = velocity_y;
         let mut steps = Vec::new();
-        let mut max_y = self.target_y_min;
         let mut max_y_option = None;
+        let mut max_y = self.target_y_min;
 
         let mut x = 0;
         let mut y = 0;
         steps.push((x, y));
 
         while x <= self.target_x_max && y >= self.target_y_min {
-            x += velocity_x;
-            y += velocity_y;
-            match velocity_x.cmp(&0) {
-                Ordering::Less => velocity_x += 1,
+            x += adjusted_velocity_x;
+            y += adjusted_velocity_y;
+            match adjusted_velocity_x.cmp(&0) {
+                Ordering::Less => adjusted_velocity_x += 1,
                 Ordering::Equal => (),
-                Ordering::Greater => velocity_x -= 1,
+                Ordering::Greater => adjusted_velocity_x -= 1,
             }
-            velocity_y -= 1;
+            adjusted_velocity_y -= 1;
 
             steps.push((x, y));
 
@@ -96,13 +106,25 @@ impl State {
             }
         }
 
-        (steps, max_y_option)
+        self.solutions.push(Solution {
+            velocity_x,
+            velocity_y,
+            steps,
+            max_y_option,
+        });
     }
 
     #[allow(dead_code)]
-    fn display(&self, steps: &[(i32, i32)]) {
-        let steps_min_x = steps.iter().map(|(x, _)| *x).min().unwrap();
-        let steps_max_y = steps.iter().map(|(_, y)| *y).max().unwrap();
+    fn display_firing(&self, solution: Solution) {
+        println!("Velocity: {}, {}", solution.velocity_x, solution.velocity_y);
+        if let Some(max_y) = solution.max_y_option {
+            println!("Success, maximum y is {}", max_y);
+        } else {
+            println!("Failure");
+        }
+
+        let steps_min_x = solution.steps.iter().map(|(x, _)| *x).min().unwrap();
+        let steps_max_y = solution.steps.iter().map(|(_, y)| *y).max().unwrap();
 
         let mut y = steps_max_y;
         loop {
@@ -111,7 +133,7 @@ impl State {
                     print!("S");
                     continue;
                 }
-                if steps.contains(&(x, y)) {
+                if solution.steps.contains(&(x, y)) {
                     print!("#");
                     continue;
                 }
@@ -127,31 +149,7 @@ impl State {
                 break;
             }
         }
-    }
-
-    fn experiment(&mut self) {
-        let mut best_solution = (0, (0, 0));
-
-        for velocity_x in 0..self.target_x_max {
-            for velocity_y in 0..300 {
-                let (_steps, max_y_option) = self.fire_probe(velocity_x, velocity_y);
-                if let Some(max_y) = max_y_option {
-                    //println!("Velocity: {}, {}", velocity_x, velocity_y);
-                    //self.display(&steps);
-                    ////println!("Success, maximum y is {}", max_y);
-                    //println!();
-                    if max_y > best_solution.0 {
-                        best_solution = (max_y, (velocity_x, velocity_y));
-                        println!("Velocity: {}, {}", velocity_x, velocity_y);
-                        //self.display(&steps);
-                        println!("Success, maximum y is {}", max_y);
-                        println!();
-                    }
-                }
-            }
-        }
-
-        dbg!(&best_solution);
+        println!();
     }
 }
 
@@ -161,5 +159,60 @@ fn main() {
 
     let mut state = State::new(&input);
 
-    state.experiment();
+    // Fire the probe for many different velocities and store the results
+    // COMMENT: I selected the end points of these ranges somewhat
+    // arbitrarily, through experimentation. It is essential that these ranges
+    // be inclusive enough. I did not come up with a method to determine
+    // exactly what ranges are appropriate.
+    for velocity_x in 0..=state.target_x_max {
+        for velocity_y in -800..800 {
+            state.fire_probe(velocity_x, velocity_y);
+        }
+    }
+
+    // Part 1
+
+    // Best solution
+    let best_solution = state.solutions.iter().cloned().fold(
+        Solution {
+            velocity_x: 0,
+            velocity_y: 0,
+            steps: vec![],
+            max_y_option: None,
+        },
+        |acc, item| {
+            if let Some(item_max_y) = item.max_y_option {
+                if let Some(acc_max_y) = acc.max_y_option {
+                    if item_max_y > acc_max_y {
+                        item
+                    } else {
+                        acc
+                    }
+                } else {
+                    item
+                }
+            } else {
+                acc
+            }
+        },
+    );
+
+    println!(
+        "Part 1: the highest y position reached is {} (for velocity ({}, {}))",
+        best_solution.max_y_option.unwrap(),
+        best_solution.velocity_x,
+        best_solution.velocity_y
+    );
+
+    // Part 2
+
+    // Number of successful solutions
+    println!(
+        "Part 2: {} initial velocities reach the target",
+        state
+            .solutions
+            .iter()
+            .filter(|solution| solution.max_y_option != None)
+            .count()
+    );
 }
