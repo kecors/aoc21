@@ -25,7 +25,7 @@ enum SplitState {
     SplitDone,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Number {
     tokens: VecDeque<Token>,
 }
@@ -356,6 +356,29 @@ fn main() {
     println!(
         "Part 1: the magnitude of the final value is {}",
         magnitude(sum.tokens)
+    );
+
+    // Part 2
+
+    let numbers: Vec<Number> = input.lines().map(Number::new).collect();
+    let mut max_magnitude_value = 0;
+
+    for number_a in numbers.iter() {
+        for number_b in numbers.iter() {
+            if number_a == number_b {
+                continue;
+            }
+            let sum = Number::add(number_a.clone(), number_b.clone());
+            let magnitude_value = magnitude(sum.tokens);
+            if magnitude_value > max_magnitude_value {
+                max_magnitude_value = magnitude_value;
+            }
+        }
+    }
+
+    println!(
+        "Part 2: the largest magnitude of any sum is {}",
+        max_magnitude_value
     );
 }
 
