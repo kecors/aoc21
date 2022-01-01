@@ -1,0 +1,14 @@
+digit = { '0' .. '9' }
+sign = { "-" }
+
+scanner_id = { digit+ }
+scanner_header = _{ "--- scanner " ~ scanner_id ~ " ---" ~ NEWLINE }
+
+x = { sign? ~ digit+ }
+y = { sign? ~ digit+ }
+z = { sign? ~ digit+ }
+beacon = _{ x ~ "," ~ y ~ "," ~ z ~ NEWLINE }
+
+scanner = _{ scanner_header ~ beacon+ }
+
+main = _{ scanner ~ (NEWLINE ~ scanner)* }
