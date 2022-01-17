@@ -317,7 +317,7 @@ impl State {
         State { scanners }
     }
 
-    fn reorient_scanners(&mut self) -> usize {
+    fn reorient_scanners(&mut self) {
         let mut scanner_pairs = VecDeque::new();
         for j in 0..self.scanners.len() {
             for k in 0..self.scanners.len() {
@@ -348,7 +348,9 @@ impl State {
                 }
             }
         }
+    }
 
+    fn beacon_count(&self) -> usize {
         let mut all_beacons = HashSet::new();
 
         for scanner in self.scanners.iter() {
@@ -358,6 +360,25 @@ impl State {
         }
 
         all_beacons.len()
+    }
+
+    fn largest_manhattan_distance(&self) -> i32 {
+        let mut largest_manhattan_distance = 0;
+
+        for j in 0..self.scanners.len() {
+            for k in 0..self.scanners.len() {
+                let offset_j = self.scanners[j].offset_option.unwrap();
+                let offset_k = self.scanners[k].offset_option.unwrap();
+                let x = (offset_j.x - offset_k.x).abs();
+                let y = (offset_j.y - offset_k.y).abs();
+                let z = (offset_j.z - offset_k.z).abs();
+                if x + y + z > largest_manhattan_distance {
+                    largest_manhattan_distance = x + y + z;
+                }
+            }
+        }
+
+        largest_manhattan_distance
     }
 }
 
@@ -377,9 +398,15 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    // Part 1
-
     let mut state = State::new(&input);
-    let beacon_count = state.reorient_scanners();
-    println!("Part 1: there are {} beacons", beacon_count);
+    state.reorient_scanners();
+
+    // Part 1
+    println!("Part 1: there are {} beacons", state.beacon_count());
+
+    // Part 2
+    println!(
+        "Part 2: the largest Manhattan distance is {}",
+        state.largest_manhattan_distance()
+    );
 }
