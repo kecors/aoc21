@@ -166,7 +166,16 @@ fn main() {
     // Part 1
 
     let mut state = State::new(&input);
-    state.apply_algorithm();
-    state.apply_algorithm();
+    for _ in 0..2 {
+        state.apply_algorithm();
+    }
     println!("Part 1: {} pixels are lit", state.image.pixel_count());
+
+    // Part 2
+
+    let mut state = State::new(&input);
+    for _ in 0..50 {
+        state.apply_algorithm();
+    }
+    println!("Part 2: {} pixels are lit", state.image.pixel_count());
 }
