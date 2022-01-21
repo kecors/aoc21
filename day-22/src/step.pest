@@ -1,0 +1,21 @@
+digit = { '0' .. '9' }
+sign = { "-" }
+value = { sign? ~ digit+ }
+
+setting = { "on" | "off" }
+
+x_low = { value }
+x_high = { value }
+x_range = _{ "x=" ~ x_low ~ ".." ~ x_high }
+
+y_low = { value }
+y_high = { value }
+y_range = _{ "y=" ~ y_low ~ ".." ~ y_high }
+
+z_low = { value }
+z_high = { value }
+z_range = _{ "z=" ~ z_low ~ ".." ~ z_high }
+
+line = _{ setting ~ " " ~ x_range ~ "," ~ y_range ~ "," ~ z_range ~ NEWLINE }
+
+main = _{ line+ }
