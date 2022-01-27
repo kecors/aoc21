@@ -78,10 +78,11 @@ impl fmt::Display for Place {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 struct Map {
     energy_spent: u32,
     place_rows: Vec<Vec<Place>>,
+    part_2_flag: bool,
 }
 
 impl fmt::Display for Map {
@@ -101,11 +102,19 @@ impl fmt::Display for Map {
 }
 
 impl Map {
-    fn new(input: &str) -> Map {
+    fn new(input: &str, part_2_flag: bool) -> Map {
         let energy_spent = 0;
 
-        let mut place_rows: Vec<Vec<Place>> = input
-            .lines()
+        let mut lines: Vec<&str> = input.lines().collect();
+
+        if part_2_flag {
+            let mut remaining_lines = lines.split_off(3);
+            lines.append(&mut vec!["  #D#C#B#A#", "  #D#B#A#C#"]);
+            lines.append(&mut remaining_lines);
+        }
+
+        let mut place_rows: Vec<Vec<Place>> = lines
+            .iter()
             .map(|line| {
                 let mut room_columns: HashSet<usize> = HashSet::new();
                 line.chars()
@@ -146,6 +155,7 @@ impl Map {
         Map {
             energy_spent,
             place_rows,
+            part_2_flag,
         }
     }
 
@@ -260,20 +270,19 @@ impl Map {
         room_y_option
     }
 
-    fn steps_to_leave_room(&self, x: usize, y: usize) -> Option<u32> {
-        match y {
-            2 => Some(1),
-            3 => {
-                if let Place::Room((_, None)) = self.place_rows[2][x] {
-                    Some(2)
-                } else {
-                    None
-                }
-            }
-            _ => {
-                panic!("Unsupported room depth {}", y);
+    fn steps_to_leave_room(&self, amphipod_x: usize, amphipod_y: usize) -> Option<u32> {
+        for y in 2..amphipod_y {
+            match self.place_rows[y][amphipod_x] {
+                Place::Room((_, None)) => (),
+                Place::Room((_, Some(_))) => return None,
+                _ => panic!(
+                    "{:?} at ({},{}) unexpectedly blocks leaving room",
+                    self.place_rows[y][amphipod_x], amphipod_x, y
+                ),
             }
         }
+
+        Some(amphipod_y as u32 - 1)
     }
 
     fn hall_to_room(&self, x: usize, amphipod: Amphipod) -> Option<(u32, usize, usize)> {
@@ -411,10 +420,12 @@ impl Map {
             }
         }
 
+        let max_d2r_steps = if self.part_2_flag { 10 } else { 3 };
+
         // Calculate the cost of entering rooms now that it is known
         // how many amphipods have already entered
         for (&amphipod, &steps) in completed_d2r_steps.iter() {
-            total_estimate += (3 - steps as u32) * amphipod.energy_per_step();
+            total_estimate += (max_d2r_steps - steps as u32) * amphipod.energy_per_step();
         }
 
         total_estimate
@@ -483,27 +494,29 @@ impl fmt::Display for State {
 }
 
 impl State {
-    fn new(input: &str) -> State {
-        let map = Map::new(input);
+    fn new(input: &str, part_2_flag: bool) -> State {
+        let map = Map::new(input, part_2_flag);
 
         State { map }
     }
 
     fn solve(&self) -> u32 {
         let mut candidates: BinaryHeap<Reverse<(u32, Map)>> = BinaryHeap::new();
+        let mut parents: HashMap<Map, Map> = HashMap::new();
 
         candidates.push(Reverse((0, self.map.clone())));
 
         while let Some(Reverse((_estimate, map))) = candidates.pop() {
-            //println!("Energy estimate: {}", estimate);
-            //print!("{}", map);
             if map.amphipods_are_organized() {
                 return map.energy_spent;
             }
 
             for new_map in map.all_valid_moves().drain(..) {
-                let new_estimate = map.energy_spent + map.estimate_remaining_energy_cost();
-                candidates.push(Reverse((new_estimate, new_map)));
+                if !parents.contains_key(&new_map) {
+                    parents.insert(new_map.clone(), map.clone());
+                    let new_estimate = map.energy_spent + map.estimate_remaining_energy_cost();
+                    candidates.push(Reverse((new_estimate, new_map)));
+                }
             }
         }
 
@@ -515,9 +528,19 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    let state = State::new(&input);
+    // Part 1
+
+    let state = State::new(&input, false);
     println!(
         "Part 1: the least energy required to organize the amphipods is {}",
+        state.solve()
+    );
+
+    // Part 2
+
+    let state = State::new(&input, true);
+    println!(
+        "Part 2: the least energy required to organize the amphipods is {}",
         state.solve()
     );
 }
